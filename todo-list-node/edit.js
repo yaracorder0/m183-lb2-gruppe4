@@ -1,4 +1,5 @@
 const db = require('./fw/db');
+const escapeHtml = require('escape-html');
 
 async function getHtml(req) {
     let title = '';
@@ -8,12 +9,8 @@ async function getHtml(req) {
     let options = ["Open", "In Progress", "Done"];
 
     if(req.query.id !== undefined) {
-        console.log('req.query: ')
-        console.log(req.query);
-        console.log(req.query.id);
         taskId = req.query.id;
-        let conn = await db.connectDB();
-        let [result, fields] = await conn.query('select ID, title, state from tasks where ID = '+taskId);
+        let result = await db.executeStatement('SELECT ID, title, state FROM tasks WHERE ID = ? AND userID = ?', [taskId, req.session.userid]);
         if(result.length > 0) {
             title = result[0].title;
             state = result[0].state;
@@ -26,10 +23,10 @@ async function getHtml(req) {
 
     html += `
     <form id="form" method="post" action="savetask">
-        <input type="hidden" name="id" value="`+taskId+`" />
+        <input type="hidden" name="id" value="`+escapeHtml(String(taskId))+`" />
         <div class="form-group">
             <label for="title">Description</label>
-            <input type="text" class="form-control size-medium" name="title" id="title" value="`+title+`">
+            <input type="text" class="form-control size-medium" name="title" id="title" value="`+escapeHtml(title)+`">
         </div>
         <div class="form-group">
             <label for="state">State</label>
@@ -37,8 +34,7 @@ async function getHtml(req) {
 
     for(let i = 0; i < options.length; i++) {
         let selected = state === options[i].toLowerCase() ? 'selected' : '';
-        html += `<span>`+options[1]+`</span>`;
-        html += `<option value='`+options[i].toLowerCase()+`' `+selected+`>`+options[i]+`</option>`;
+        html += `<option value='`+escapeHtml(options[i].toLowerCase())+`' `+selected+`>`+escapeHtml(options[i])+`</option>`;
     }
 
     html += `

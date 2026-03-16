@@ -8,11 +8,17 @@ async function getHtml(req) {
 
     let provider = req.body.provider;
     let terms = req.body.terms;
-    let userid = req.body.userid;
+    let userid = req.session.userid; // Use session userid instead of body
+
+    // SSRF Whitelist
+    const allowedProviders = ['/search/v2/'];
+    if (!allowedProviders.includes(provider)) {
+        return "Invalid search provider";
+    }
 
     await sleep(1000); // this is a long, long search!!
 
-    let theUrl='http://localhost:3000'+provider+'?userid='+userid+'&terms='+terms;
+    let theUrl='http://localhost:3000'+provider+'?userid='+userid+'&terms='+encodeURIComponent(terms);
     let result = await callAPI('GET', theUrl, false);
     return result;
 }

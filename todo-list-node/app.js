@@ -11,15 +11,24 @@ const editTask = require('./edit');
 const saveTask = require('./savetask');
 const search = require('./search');
 const searchProvider = require('./search/v2/index');
+const seed = require('./seed');
 
 const app = express();
 const PORT = 3000;
 
+// Seed the database on startup
+seed();
+
 // Middleware für Session-Handling
 app.use(session({
-    secret: 'secret',
-    resave: true,
-    saveUninitialized: true
+    secret: 'secure-random-secret-key-12345',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: false, // set to true if using HTTPS
+        sameSite: 'lax'
+    }
 }));
 
 // Middleware für Body-Parser
@@ -49,8 +58,8 @@ app.post('/', async (req, res) => {
 
 // edit task
 app.get('/admin/users', async (req, res) => {
-    if(activeUserSession(req)) {
-        let html = await wrapContent(await adminUser.html, req);
+    if(activeUserSession(req) && req.session.roleid === 1) {
+        let html = await wrapContent(await adminUser.html(), req);
         res.send(html);
     } else {
         res.redirect('/');
@@ -72,8 +81,21 @@ app.get('/login', async (req, res) => {
     let content = await login.handleLogin(req, res);
 
     if(content.user.userid !== 0) {
-        // login was successful... set cookies and redirect to /
-        login.startUserSession(res, content.user);
+        // login was successful... set session and redirect to /
+        login.startUserSession(req, res, content.user);
+    } else {
+        // login unsuccessful or not made jet... display login form
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+});
+
+app.post('/login', async (req, res) => {
+    let content = await login.handleLogin(req, res);
+
+    if(content.user.userid !== 0) {
+        // login was successful... set session and redirect to /
+        login.startUserSession(req, res, content.user);
     } else {
         // login unsuccessful or not made jet... display login form
         let html = await wrapContent(content.html, req);
@@ -84,8 +106,6 @@ app.get('/login', async (req, res) => {
 // Logout
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.cookie('username','');
-    res.cookie('userid','');
     res.redirect('/login');
 });
 
@@ -132,8 +152,7 @@ async function wrapContent(content, req) {
 }
 
 function activeUserSession(req) {
-    // check if cookie with user information ist set
+    // check if session with user information is set
     console.log('in activeUserSession');
-    console.log(req.cookies);
-    return req.cookies !== undefined && req.cookies.username !== undefined && req.cookies.username !== '';
+    return req.session !== undefined && req.session.loggedin === true;
 }
