@@ -3,6 +3,7 @@ const db = require('../fw/db');
 async function getHtml() {
     let conn = await db.connectDB();
     let html = '';
+    //crashing here
     let [result,fields] = await conn.query("SELECT users.ID, users.username, users.password, roles.title FROM users inner join permissions on users.ID = permissions.userID inner join roles on permissions.roleID = roles.ID order by username");
 
     html += `

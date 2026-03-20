@@ -34,6 +34,7 @@ async function validateLogin (username, password) {
     // Connect to the database
     const dbConnection = await db.connectDB();
 
+    // VULNERABLE: CONCATENATION, change to prepared statements
     const sql = `SELECT id, username, password FROM users WHERE username='`+username+`'`;
     try {
         const [results, fields] = await dbConnection.query(sql);
@@ -83,6 +84,8 @@ function getHtml() {
         <div class="form-group">
             <label for="submit" ></label>
             <input id="submit" type="submit" class="btn size-auto" value="Login" />
+            <!-- Added Sign Up Button -->
+            <a href="/signup" class="btn size-auto" style="text-decoration: none; background-color: #eee; color: black; padding: 5px 10px; border: 1px solid #ccc; margin-left: 10px;">Sign Up</a>
         </div>
     </form>`;
 }
