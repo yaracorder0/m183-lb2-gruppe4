@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -20,7 +22,10 @@ const PORT = 3000;
 app.use(session({
     secret: 'secret',
     resave: true,
-    saveUninitialized: true
+    saveUninitialized: true,
+    cookie: {
+        httpOnly: true
+    }
 }));
 
 // Middleware für Body-Parser
@@ -70,13 +75,18 @@ app.get('/edit', async (req, res) => {
 
 // Login-Seite anzeigen
 app.get('/login', async (req, res) => {
+    let content = await login.handleLoginPage(req);
+    let html = await wrapContent(content.html, req);
+    res.send(html);
+});
+
+// Handle login submit
+app.post('/login', async (req, res) => {
     let content = await login.handleLogin(req, res);
 
     if(content.user.userid !== 0) {
-        // login was successful... set cookies and redirect to /
-        login.startUserSession(res, content.user);
+        login.startUserSession(req, res, content.user);
     } else {
-        // login unsuccessful or not made jet... display login form
         let html = await wrapContent(content.html, req);
         res.send(html);
     }
