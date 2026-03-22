@@ -9,6 +9,10 @@ async function handleLogin(req, res) {
         msg = '<div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 20px;">Account creation successful! Please log in.</div>';
     }
 
+    if (req.query.resetSuccess === 'true') {
+        msg = '<div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 20px;">Password reset successful! Please log in with your new password.</div>';
+    }
+
     if(typeof req.body.username !== 'undefined' && typeof req.body.password !== 'undefined') {
         // Get username and password from the form and call the validateLogin
         let result = await validateLogin(req.body.username, req.body.password);
@@ -104,10 +108,11 @@ function getHtml() {
             <label for="submit" ></label>
             <input id="submit" type="submit" class="btn size-auto" value="Login" />
             <!-- Added Sign Up Button -->
-            <a href="/signup" class="btn size-auto" style="text-decoration: none; background-color: #eee; color: black; padding: 5px 10px; border: 1px solid #ccc; margin-left: 10px;">Sign Up</a>
+            <a href="/signup" class="btn size-auto" style="text-decoration: none; background-color: #00a0e5; color: white; padding: 5px 10px; border: 1px solid #00a0e5; margin-left: 10px; border-radius: 3px; font-size: 16px;">Sign Up</a>
+            <a href="/forgot-password" style="margin-left: 10px; font-size: 0.9em;">Forgot Password?</a>
         </div>
     </form>`;
-}
+}   
 
 module.exports = {
     handleLogin: handleLogin,

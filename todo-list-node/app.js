@@ -6,6 +6,7 @@ const header = require('./fw/header');
 const footer = require('./fw/footer');
 const login = require('./login');
 const signup = require('./signup')
+const passwordReset = require('./passwordreset');
 const index = require('./index');
 const adminUser = require('./admin/users');
 const editTask = require('./edit');
@@ -117,6 +118,38 @@ app.post('/signup', async (req, res) => {
         // Redirect to login page with a success message indicator
         res.redirect('/login?signupSuccess=true');
     } else {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.get('/forgot-password', async (req, res) => {
+    let content = await passwordReset.handleForgotPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.post('/forgot-password', async (req, res) => {
+    let content = await passwordReset.handleForgotPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.get('/reset-password', async (req, res) => {
+    let content = await passwordReset.handleResetPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.post('/reset-password', async (req, res) => {
+    let content = await passwordReset.handleResetPassword(req, res);
+    if (content) {
         let html = await wrapContent(content.html, req);
         res.send(html);
     }
