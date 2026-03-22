@@ -184,6 +184,7 @@ async function validateLogin(username, password) {
 
 function getHtml(msg = '', showCaptcha = false) {
     return `
+    ${msg ? `<div style="margin-bottom: 20px;">${msg}</div>` : ''}
     <h2>Login</h2>
 
     <form id="form" method="post" action="/login">
