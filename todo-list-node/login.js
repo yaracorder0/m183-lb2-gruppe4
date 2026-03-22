@@ -5,6 +5,10 @@ async function handleLogin(req, res) {
     let msg = '';
     let user = { 'username': '', 'userid': 0, 'roleid': 0 };
 
+    if (req.query.signupSuccess === 'true') {
+        msg = '<div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 20px;">Account creation successful! Please log in.</div>';
+    }
+
     if(typeof req.body.username !== 'undefined' && typeof req.body.password !== 'undefined') {
         // Get username and password from the form and call the validateLogin
         let result = await validateLogin(req.body.username, req.body.password);
@@ -70,6 +74,9 @@ async function validateLogin (username, password) {
             // Username does not exist
             result.msg = 'Username does not exist';
         }
+
+        console.log(results); // results contains rows returned by server
+        //console.log(fields); // fields contains extra meta data about results, if available
     } catch (err) {
         console.log('[DEBUG_LOG] error in validateLogin:', err);
         console.log(err);
@@ -96,6 +103,8 @@ function getHtml() {
         <div class="form-group">
             <label for="submit" ></label>
             <input id="submit" type="submit" class="btn size-auto" value="Login" />
+            <!-- Added Sign Up Button -->
+            <a href="/signup" class="btn size-auto" style="text-decoration: none; background-color: #eee; color: black; padding: 5px 10px; border: 1px solid #ccc; margin-left: 10px;">Sign Up</a>
         </div>
     </form>`;
 }

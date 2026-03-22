@@ -5,6 +5,7 @@ const path = require('path');
 const header = require('./fw/header');
 const footer = require('./fw/footer');
 const login = require('./login');
+const signup = require('./signup')
 const index = require('./index');
 const adminUser = require('./admin/users');
 const editTask = require('./edit');
@@ -102,6 +103,24 @@ app.post('/login', async (req, res) => {
         res.send(html);
     }
 });
+
+app.get('/signup', async (req, res) => {
+    let content = await signup.handleSignup(req, res);
+    let html = await wrapContent(content.html, req);
+    res.send(html);
+})
+
+app.post('/signup', async (req, res) => {
+    let content = await signup.handleSignup(req, res);
+
+    if (content.user.userid !== 0) {
+        // Redirect to login page with a success message indicator
+        res.redirect('/login?signupSuccess=true');
+    } else {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
 
 // Logout
 app.get('/logout', (req, res) => {
