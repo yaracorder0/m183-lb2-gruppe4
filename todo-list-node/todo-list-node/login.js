@@ -1,8 +1,6 @@
 const db = require('./fw/db');
 const axios = require('axios');
 const bcrypt = require('bcryptjs');
-const escapeHtml = require('escape-html');
-
 
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY;
@@ -35,14 +33,14 @@ async function handleLogin(req, res) {
     const failedAttempts = req.session.failedLoginAttempts || 0;
     const showCaptcha = failedAttempts >= MAX_FAILED_ATTEMPTS;
 
-if (typeof username !== 'undefined' && typeof password !== 'undefined') {
+    if (typeof username !== 'undefined' && typeof password !== 'undefined') {
         // Get username and password from the form and call the validateLogin
         if (showCaptcha) {
             const captchaToken = req.body['g-recaptcha-response'];
 
             if (!captchaToken) {
                 return {
-                    html: getHtml('Please complete the reCAPTCHA.', true),
+                    html: msg + getHtml('Please complete the reCAPTCHA.', true),
                     user
                 };
             }
@@ -51,26 +49,26 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
 
             if (!captchaValid) {
                 return {
-                    html: getHtml('reCAPTCHA verification failed. Please try again.', true),
+                    html: msg + getHtml('reCAPTCHA verification failed. Please try again.', true),
                     user
                 };
             }
         }
 
-        let result = await validateLogin(req.body.username, req.body.password);
+        let result = await validateLogin(username, password);
 
         if(result.valid) {
             // Login is correct. Store user information to be returned.
             user.username = username;
             user.userid = result.userId;
             user.roleid = result.roleId;
-            msg = escapeHtml(result.msg);
+            msg = result.msg;
 
             req.session.failedLoginAttempts = 0;
         } else {
             req.session.failedLoginAttempts = failedAttempts + 1;
             const nowShowCaptcha = req.session.failedLoginAttempts >= MAX_FAILED_ATTEMPTS;
-            msg = escapeHtml(result.msg);
+            msg = result.msg;
             return {
                 html: getHtml(msg, nowShowCaptcha),
                 user
@@ -80,28 +78,21 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
     const updatedFailedAttempts = req.session.failedLoginAttempts || 0;
     const updatedShowCaptcha = updatedFailedAttempts >= MAX_FAILED_ATTEMPTS;
 
-    return { html: getHtml(msg, updatedShowCaptcha), user };
+    return { html: msg + getHtml('', updatedShowCaptcha), user };
 }
 
 function startUserSession(req, res, user) {
     console.log('login valid... start user session now for userid '+user.userid);
 
-    // Regenerate session to prevent session fixation
-    req.session.regenerate((err) => {
-        if (err) {
-            console.error('Session regeneration error:', err);
-        }
-        
-        req.session.loggedin = true;
-        req.session.username = user.username;
-        req.session.userid = user.userid;
-        req.session.roleid = user.roleid;
-        req.session.failedLoginAttempts = 0;
+    req.session.loggedin = true;
+    req.session.username = user.username;
+    req.session.userid = user.userid;
+    req.session.roleid = user.roleid;
+    req.session.failedLoginAttempts = 0;
 
-        res.cookie('username', user.username, { httpOnly: true });
-        res.cookie('userid', user.userid, { httpOnly: true });
-        res.redirect('/');
-    });
+    res.cookie('username', user.username);
+    res.cookie('userid', user.userid);
+    res.redirect('/');
 }
 
 async function verifyRecaptcha(token, remoteIp) {
@@ -133,25 +124,23 @@ async function verifyRecaptcha(token, remoteIp) {
 async function validateLogin(username, password) {
     let result = { valid: false, msg: '', userId: 0, roleId: 0 };
 
-    // Connect to the database
     const dbConnection = await db.connectDB();
 
     const sql = `SELECT users.id userid, roles.id roleid, users.password FROM users 
                  INNER JOIN permissions ON users.id = permissions.userid 
                  INNER JOIN roles ON permissions.roleID = roles.id 
                  WHERE username = ?`;
+
     try {
-        const [results, fields] = await dbConnection.execute(sql, [username]);
+        const [results] = await dbConnection.execute(sql, [username]);
         console.log('[DEBUG_LOG] results for user ' + username + ':', results);
 
-        if(results.length > 0) {
-            // Bind the result variables
+        if (results.length > 0) {
             let db_id = results[0].userid;
             let db_roleId = results[0].roleid;
             let db_password = results[0].password;
 
             console.log('[DEBUG_LOG] comparing passwords...');
-            // Verify the password with bcrypt
             if (bcrypt.compareSync(password, db_password)) {
                 console.log('[DEBUG_LOG] password match');
                 result.userId = db_id;
@@ -160,20 +149,16 @@ async function validateLogin(username, password) {
                 result.msg = 'login correct';
             } else {
                 console.log('[DEBUG_LOG] password mismatch');
-                // Password is incorrect
                 result.msg = 'Incorrect password';
             }
         } else {
             console.log('[DEBUG_LOG] user not found');
-            // Username does not exist
             result.msg = 'Username does not exist';
         }
 
-        console.log(results); // results contains rows returned by server
-        //console.log(fields); // fields contains extra meta data about results, if available
+        console.log(results);
     } catch (err) {
         console.log('[DEBUG_LOG] error in validateLogin:', err);
-        console.log(err);
         result.msg = 'Login error';
     } finally {
         await dbConnection.end();
@@ -184,6 +169,7 @@ async function validateLogin(username, password) {
 
 function getHtml(msg = '', showCaptcha = false) {
     return `
+    ${msg ? `<div style="color: red; margin-bottom: 10px;">${msg}</div>` : ''}
     <h2>Login</h2>
 
     <form id="form" method="post" action="/login">

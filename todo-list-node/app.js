@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -6,26 +8,48 @@ const header = require('./fw/header');
 const footer = require('./fw/footer');
 const login = require('./login');
 const signup = require('./signup')
+const passwordReset = require('./passwordreset');
 const index = require('./index');
 const adminUser = require('./admin/users');
 const editTask = require('./edit');
+const deleteTask = require('./delete');
 const saveTask = require('./savetask');
 const search = require('./search');
 const searchProvider = require('./search/v2/index');
+const seed = require('./seed');
+const escapeHtml = require('escape-html');
 
 const app = express();
 const PORT = 3000;
 
+// Seed the database on startup
+seed();
+
 // Middleware für Session-Handling
 app.use(session({
-    secret: 'secret',
-    resave: true,
-    saveUninitialized: true
+    secret: process.env.SESSION_SECRET || 'fallback-secret-12345',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: false, // set to true if using HTTPS
+        sameSite: 'lax'
+    }
 }));
 
 // Middleware für Body-Parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Basic Security Headers
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; frame-src https://www.google.com/recaptcha/; style-src 'self' 'unsafe-inline';");
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 
@@ -50,8 +74,8 @@ app.post('/', async (req, res) => {
 
 // edit task
 app.get('/admin/users', async (req, res) => {
-    if(activeUserSession(req)) {
-        let html = await wrapContent(await adminUser.html, req);
+    if(activeUserSession(req) && req.session.roleid === 1) {
+        let html = await wrapContent(await adminUser.html(), req);
         res.send(html);
     } else {
         res.redirect('/');
@@ -68,13 +92,36 @@ app.get('/edit', async (req, res) => {
     }
 });
 
+// delete task
+app.get('/delete', async (req, res) => {
+    if (activeUserSession(req)) {
+        let html = await wrapContent(await deleteTask.html(req), req);
+        res.send(html);
+    } else {
+        res.redirect('/');
+    }
+});
+
 // Login-Seite anzeigen
 app.get('/login', async (req, res) => {
     let content = await login.handleLogin(req, res);
 
     if(content.user.userid !== 0) {
-        // login was successful... set cookies and redirect to /
-        login.startUserSession(res, content.user);
+        // login was successful... set session and redirect to /
+        login.startUserSession(req, res, content.user);
+    } else {
+        // login unsuccessful or not made jet... display login form
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+});
+
+app.post('/login', async (req, res) => {
+    let content = await login.handleLogin(req, res);
+
+    if(content.user.userid !== 0) {
+        // login was successful... set session and redirect to /
+        login.startUserSession(req, res, content.user);
     } else {
         // login unsuccessful or not made jet... display login form
         let html = await wrapContent(content.html, req);
@@ -84,10 +131,49 @@ app.get('/login', async (req, res) => {
 
 app.get('/signup', async (req, res) => {
     let content = await signup.handleSignup(req, res);
+    let html = await wrapContent(content.html, req);
+    res.send(html);
+})
+
+app.post('/signup', async (req, res) => {
+    let content = await signup.handleSignup(req, res);
 
     if (content.user.userid !== 0) {
-        signup.startUserSession(res, content.user);
+        // Redirect to login page with a success message indicator
+        res.redirect('/login?signupSuccess=true');
     } else {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.get('/forgot-password', async (req, res) => {
+    let content = await passwordReset.handleForgotPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.post('/forgot-password', async (req, res) => {
+    let content = await passwordReset.handleForgotPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.get('/reset-password', async (req, res) => {
+    let content = await passwordReset.handleResetPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.post('/reset-password', async (req, res) => {
+    let content = await passwordReset.handleResetPassword(req, res);
+    if (content) {
         let html = await wrapContent(content.html, req);
         res.send(html);
     }
@@ -96,15 +182,13 @@ app.get('/signup', async (req, res) => {
 // Logout
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.cookie('username','');
-    res.cookie('userid','');
     res.redirect('/login');
 });
 
 // Profilseite anzeigen
 app.get('/profile', (req, res) => {
     if (req.session.loggedin) {
-        res.send(`Welcome, ${req.session.username}! <a href="/logout">Logout</a>`);
+        res.send(`Welcome, ${escapeHtml(req.session.username)}! <a href="/logout">Logout</a>`);
     } else {
         res.send('Please login to view this page');
     }
@@ -128,8 +212,12 @@ app.post('/search', async (req, res) => {
 
 // search provider
 app.get('/search/v2/', async (req, res) => {
-    let result = await searchProvider.search(req);
-    res.send(result);
+    if (activeUserSession(req)) {
+        let result = await searchProvider.search(req);
+        res.send(result);
+    } else {
+        res.status(403).send('Unauthorized');
+    }
 });
 
 
@@ -144,8 +232,7 @@ async function wrapContent(content, req) {
 }
 
 function activeUserSession(req) {
-    // check if cookie with user information ist set
+    // check if session with user information is set
     console.log('in activeUserSession');
-    console.log(req.cookies);
-    return req.cookies !== undefined && req.cookies.username !== undefined && req.cookies.username !== '';
+    return req.session !== undefined && req.session.loggedin === true;
 }

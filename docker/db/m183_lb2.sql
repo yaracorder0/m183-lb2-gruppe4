@@ -130,8 +130,8 @@ insert into roles (ID, title) values (2, 'User');
 insert into roles (ID, title) values (1, 'Admin');
 
 
-insert into users (ID, username, password) values (1, 'admin1', 'Awesome.Pass34');
-insert into users (ID, username, password) values (2, 'user1', 'Amazing.Pass23');
+insert into users (ID, username, password) values (1, 'admin1', '$2b$10$NOvkj5VP2xvj235ZIY.3oO3lQUmc2HhIio31LdssUlMHnbJPuGmIq'); -- Password: Awesome.Pass34
+insert into users (ID, username, password) values (2, 'user1', '$2b$10$NOvkj5VP2xvj235ZIY.3oO3lQUmc2HhIio31LdssUlMHnbJPuGmIq'); -- Password: Awesome.Pass34 (same for example)
 
 insert into permissions(ID, userID, roleID) values(null, 1, 1);
 insert into permissions(ID, userID, roleID) values(null, 2, 2);
