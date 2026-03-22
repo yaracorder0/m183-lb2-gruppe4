@@ -8,23 +8,30 @@ const header = require('./fw/header');
 const footer = require('./fw/footer');
 const login = require('./login');
 const signup = require('./signup')
+const passwordReset = require('./passwordreset');
 const index = require('./index');
 const adminUser = require('./admin/users');
 const editTask = require('./edit');
 const saveTask = require('./savetask');
 const search = require('./search');
 const searchProvider = require('./search/v2/index');
+const seed = require('./seed');
 
 const app = express();
 const PORT = 3000;
 
+// Seed the database on startup
+seed();
+
 // Middleware für Session-Handling
 app.use(session({
-    secret: 'secret',
-    resave: true,
-    saveUninitialized: true,
+    secret: 'secure-random-secret-key-12345',
+    resave: false,
+    saveUninitialized: false,
     cookie: {
-        httpOnly: true
+        httpOnly: true,
+        secure: false, // set to true if using HTTPS
+        sameSite: 'lax'
     }
 }));
 
@@ -55,8 +62,8 @@ app.post('/', async (req, res) => {
 
 // edit task
 app.get('/admin/users', async (req, res) => {
-    if(activeUserSession(req)) {
-        let html = await wrapContent(await adminUser.html, req);
+    if(activeUserSession(req) && req.session.roleid === 1) {
+        let html = await wrapContent(await adminUser.html(), req);
         res.send(html);
     } else {
         res.redirect('/');
@@ -75,18 +82,26 @@ app.get('/edit', async (req, res) => {
 
 // Login-Seite anzeigen
 app.get('/login', async (req, res) => {
-    let content = await login.handleLoginPage(req);
-    let html = await wrapContent(content.html, req);
-    res.send(html);
+    let content = await login.handleLogin(req, res);
+
+    if(content.user.userid !== 0) {
+        // login was successful... set session and redirect to /
+        login.startUserSession(req, res, content.user);
+    } else {
+        // login unsuccessful or not made jet... display login form
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
 });
 
-// Handle login submit
 app.post('/login', async (req, res) => {
     let content = await login.handleLogin(req, res);
 
     if(content.user.userid !== 0) {
+        // login was successful... set session and redirect to /
         login.startUserSession(req, res, content.user);
     } else {
+        // login unsuccessful or not made jet... display login form
         let html = await wrapContent(content.html, req);
         res.send(html);
     }
@@ -94,10 +109,49 @@ app.post('/login', async (req, res) => {
 
 app.get('/signup', async (req, res) => {
     let content = await signup.handleSignup(req, res);
+    let html = await wrapContent(content.html, req);
+    res.send(html);
+})
+
+app.post('/signup', async (req, res) => {
+    let content = await signup.handleSignup(req, res);
 
     if (content.user.userid !== 0) {
-        signup.startUserSession(res, content.user);
+        // Redirect to login page with a success message indicator
+        res.redirect('/login?signupSuccess=true');
     } else {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.get('/forgot-password', async (req, res) => {
+    let content = await passwordReset.handleForgotPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.post('/forgot-password', async (req, res) => {
+    let content = await passwordReset.handleForgotPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.get('/reset-password', async (req, res) => {
+    let content = await passwordReset.handleResetPassword(req, res);
+    if (content) {
+        let html = await wrapContent(content.html, req);
+        res.send(html);
+    }
+})
+
+app.post('/reset-password', async (req, res) => {
+    let content = await passwordReset.handleResetPassword(req, res);
+    if (content) {
         let html = await wrapContent(content.html, req);
         res.send(html);
     }
@@ -106,8 +160,6 @@ app.get('/signup', async (req, res) => {
 // Logout
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.cookie('username','');
-    res.cookie('userid','');
     res.redirect('/login');
 });
 
@@ -154,8 +206,7 @@ async function wrapContent(content, req) {
 }
 
 function activeUserSession(req) {
-    // check if cookie with user information ist set
+    // check if session with user information is set
     console.log('in activeUserSession');
-    console.log(req.cookies);
-    return req.cookies !== undefined && req.cookies.username !== undefined && req.cookies.username !== '';
+    return req.session !== undefined && req.session.loggedin === true;
 }

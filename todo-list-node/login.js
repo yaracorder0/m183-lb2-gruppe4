@@ -1,5 +1,7 @@
 const db = require('./fw/db');
 const axios = require('axios');
+const bcrypt = require('bcryptjs');
+
 
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY;
@@ -16,7 +18,15 @@ async function handleLoginPage(req) {
 
 async function handleLogin(req, res) {
     let msg = '';
-    let user = { 'username': '', 'userid': 0 };
+    let user = { 'username': '', 'userid': 0, 'roleid': 0 };
+
+    if (req.query.signupSuccess === 'true') {
+        msg = '<div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 20px;">Account creation successful! Please log in.</div>';
+    }
+
+    if (req.query.resetSuccess === 'true') {
+        msg = '<div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 20px;">Password reset successful! Please log in with your new password.</div>';
+    }
 
     const username = req.body.username;
     const password = req.body.password;
@@ -46,12 +56,13 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
             }
         }
 
-        let result = await validateLogin(username, password);
+        let result = await validateLogin(req.body.username, req.body.password);
 
         if(result.valid) {
             // Login is correct. Store user information to be returned.
             user.username = username;
             user.userid = result.userId;
+            user.roleid = result.roleId;
             msg = result.msg;
 
             req.session.failedLoginAttempts = 0;
@@ -73,14 +84,12 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
 
 function startUserSession(req, res, user) {
     console.log('login valid... start user session now for userid '+user.userid);
-
     req.session.loggedin = true;
     req.session.username = user.username;
     req.session.userid = user.userid;
+    req.session.roleid = user.roleid;
     req.session.failedLoginAttempts = 0;
 
-    res.cookie('username', user.username);
-    res.cookie('userid', user.userid);
     res.redirect('/');
 }
 
@@ -111,34 +120,52 @@ async function verifyRecaptcha(token, remoteIp) {
 }
 
 async function validateLogin(username, password) {
-    let result = { valid: false, msg: '', userId: 0 };
+    let result = { valid: false, msg: '', userId: 0, roleId: 0 };
 
+    // Connect to the database
     const dbConnection = await db.connectDB();
 
-    const sql = 'SELECT id, username, password FROM users WHERE username = ?';
-
+    const sql = `SELECT users.id userid, roles.id roleid, users.password FROM users 
+                 INNER JOIN permissions ON users.id = permissions.userid 
+                 INNER JOIN roles ON permissions.roleID = roles.id 
+                 WHERE username = ?`;
     try {
-        const [results] = await dbConnection.execute(sql, [username]);
+        const [results, fields] = await dbConnection.execute(sql, [username]);
+        console.log('[DEBUG_LOG] results for user ' + username + ':', results);
 
-        if (results.length > 0) {
-            let db_id = results[0].id;
+        if(results.length > 0) {
+            // Bind the result variables
+            let db_id = results[0].userid;
+            let db_roleId = results[0].roleid;
             let db_password = results[0].password;
 
-            if (password == db_password) {
+            console.log('[DEBUG_LOG] comparing passwords...');
+            // Verify the password with bcrypt
+            if (bcrypt.compareSync(password, db_password)) {
+                console.log('[DEBUG_LOG] password match');
                 result.userId = db_id;
+                result.roleId = db_roleId;
                 result.valid = true;
                 result.msg = 'login correct';
             } else {
+                console.log('[DEBUG_LOG] password mismatch');
+                // Password is incorrect
                 result.msg = 'Incorrect password';
             }
         } else {
+            console.log('[DEBUG_LOG] user not found');
+            // Username does not exist
             result.msg = 'Username does not exist';
         }
 
-        console.log(results);
+        console.log(results); // results contains rows returned by server
+        //console.log(fields); // fields contains extra meta data about results, if available
     } catch (err) {
+        console.log('[DEBUG_LOG] error in validateLogin:', err);
         console.log(err);
         result.msg = 'Login error';
+    } finally {
+        await dbConnection.end();
     }
 
     return result;
@@ -168,7 +195,8 @@ function getHtml(msg = '', showCaptcha = false) {
             <label for="submit" ></label>
             <input id="submit" type="submit" class="btn size-auto" value="Login" />
             <!-- Added Sign Up Button -->
-            <a href="/signup" class="btn size-auto" style="text-decoration: none; background-color: #eee; color: black; padding: 5px 10px; border: 1px solid #ccc; margin-left: 10px;">Sign Up</a>
+            <a href="/signup" class="btn size-auto" style="text-decoration: none; background-color: #00a0e5; color: white; padding: 5px 10px; border: 1px solid #00a0e5; margin-left: 10px; border-radius: 3px; font-size: 16px;">Sign Up</a>
+            <a href="/forgot-password" style="margin-left: 10px; font-size: 0.9em;">Forgot Password?</a>
         </div>
     </form>`;
 }
