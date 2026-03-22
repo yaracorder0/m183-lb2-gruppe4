@@ -1,5 +1,6 @@
 const db = require('./fw/db');
 const bcrypt = require('bcryptjs');
+const escapeHtml = require('escape-html');
 
 async function handleForgotPassword(req, res) {
     let msg = '';
@@ -9,9 +10,13 @@ async function handleForgotPassword(req, res) {
         const { username } = req.body;
         let result = await verifyUser(username);
         if (result.valid) {
-            // In a real app, we'd send an email with a token.
-            // Here we'll just redirect to the reset page with the username as a "token" (insecure, but fits the app style)
-            res.redirect('/reset-password?user=' + encodeURIComponent(username));
+            // Secure random token generation
+            const token = require('crypto').randomBytes(16).toString('hex');
+            // Store token in session (in a real app, this would be in the DB with an expiration)
+            req.session.resetToken = token;
+            req.session.resetUsername = username;
+            
+            res.redirect('/reset-password?token=' + token);
             return null; 
         } else {
             msg = '<div class="alert alert-danger">User not found.</div>';
@@ -24,9 +29,10 @@ async function handleForgotPassword(req, res) {
 async function handleResetPassword(req, res) {
     let msg = '';
     let success = false;
-    const username = req.query.user || req.body.username;
+    const token = req.query.token || req.body.token;
+    const username = req.session.resetUsername;
 
-    if (!username) {
+    if (!token || !username || token !== req.session.resetToken) {
         res.redirect('/forgot-password');
         return null;
     }
@@ -38,15 +44,18 @@ async function handleResetPassword(req, res) {
         } else {
             let result = await updatePassword(username, password);
             if (result.valid) {
+                // Clear reset data from session
+                delete req.session.resetToken;
+                delete req.session.resetUsername;
                 res.redirect('/login?resetSuccess=true');
                 return null;
             } else {
-                msg = '<div class="alert alert-danger">' + result.msg + '</div>';
+                msg = '<div class="alert alert-danger">' + escapeHtml(result.msg) + '</div>';
             }
         }
     }
 
-    return { 'html': msg + getResetPasswordHtml(username), 'success': success };
+    return { 'html': msg + getResetPasswordHtml(username, token), 'success': success };
 }
 
 async function verifyUser(username) {
@@ -101,12 +110,13 @@ function getForgotPasswordHtml() {
     </form>`;
 }
 
-function getResetPasswordHtml(username) {
+function getResetPasswordHtml(username, token) {
+    const escapeHtml = require('escape-html');
     return `
     <h2>Set New Password</h2>
-    <p>Setting new password for user: <strong>${username}</strong></p>
+    <p>Setting new password for user: <strong>${escapeHtml(username)}</strong></p>
     <form method="post" action="/reset-password">
-        <input type="hidden" name="username" value="${username}">
+        <input type="hidden" name="token" value="${escapeHtml(token)}">
         <div class="form-group">
             <label for="password">New Password</label>
             <input type="password" class="form-control size-medium" name="password" id="password" required>

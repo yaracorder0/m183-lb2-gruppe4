@@ -1,5 +1,6 @@
 const axios = require('axios');
 const querystring = require('querystring');
+const escapeHtml = require('escape-html');
 
 async function getHtml(req) {
     if (req.body.provider === undefined || req.body.terms === undefined || req.body.userid === undefined){
@@ -20,7 +21,7 @@ async function getHtml(req) {
 
     let theUrl='http://localhost:3000'+provider+'?userid='+userid+'&terms='+encodeURIComponent(terms);
     let result = await callAPI('GET', theUrl, false);
-    return result;
+    return escapeHtml(result);
 }
 
 async function callAPI(method, url, data){

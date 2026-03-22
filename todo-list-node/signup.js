@@ -1,6 +1,6 @@
 const db = require('./fw/db');
-
 const bcrypt = require('bcryptjs');
+const escapeHtml = require('escape-html');
 
 async function handleSignup(req, res) {
   let msg = '';
@@ -25,7 +25,7 @@ async function handleSignup(req, res) {
       }
     }
 
-  return { 'html': msg + getHtml(), 'success': success, 'user': user };
+  return { 'html': escapeHtml(msg) + getHtml(), 'success': success, 'user': user };
 }
 
 function startUserSession(res, user) {

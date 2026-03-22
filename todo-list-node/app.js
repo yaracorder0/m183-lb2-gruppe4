@@ -12,10 +12,12 @@ const passwordReset = require('./passwordreset');
 const index = require('./index');
 const adminUser = require('./admin/users');
 const editTask = require('./edit');
+const deleteTask = require('./delete');
 const saveTask = require('./savetask');
 const search = require('./search');
 const searchProvider = require('./search/v2/index');
 const seed = require('./seed');
+const escapeHtml = require('escape-html');
 
 const app = express();
 const PORT = 3000;
@@ -25,7 +27,7 @@ seed();
 
 // Middleware für Session-Handling
 app.use(session({
-    secret: 'secure-random-secret-key-12345',
+    secret: process.env.SESSION_SECRET || 'fallback-secret-12345',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -38,6 +40,16 @@ app.use(session({
 // Middleware für Body-Parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Basic Security Headers
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; frame-src https://www.google.com/recaptcha/; style-src 'self' 'unsafe-inline';");
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 
@@ -74,6 +86,16 @@ app.get('/admin/users', async (req, res) => {
 app.get('/edit', async (req, res) => {
     if (activeUserSession(req)) {
         let html = await wrapContent(await editTask.html(req), req);
+        res.send(html);
+    } else {
+        res.redirect('/');
+    }
+});
+
+// delete task
+app.get('/delete', async (req, res) => {
+    if (activeUserSession(req)) {
+        let html = await wrapContent(await deleteTask.html(req), req);
         res.send(html);
     } else {
         res.redirect('/');
@@ -166,7 +188,7 @@ app.get('/logout', (req, res) => {
 // Profilseite anzeigen
 app.get('/profile', (req, res) => {
     if (req.session.loggedin) {
-        res.send(`Welcome, ${req.session.username}! <a href="/logout">Logout</a>`);
+        res.send(`Welcome, ${escapeHtml(req.session.username)}! <a href="/logout">Logout</a>`);
     } else {
         res.send('Please login to view this page');
     }
@@ -190,8 +212,12 @@ app.post('/search', async (req, res) => {
 
 // search provider
 app.get('/search/v2/', async (req, res) => {
-    let result = await searchProvider.search(req);
-    res.send(result);
+    if (activeUserSession(req)) {
+        let result = await searchProvider.search(req);
+        res.send(result);
+    } else {
+        res.status(403).send('Unauthorized');
+    }
 });
 
 
