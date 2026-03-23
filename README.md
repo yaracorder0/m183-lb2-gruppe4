@@ -18,16 +18,24 @@ Follow these steps to get the project up and running on your local machine.
    ```powershell
    cd todo-list-node
    npm install
-   cd ..
    ```
 
-2. **Start the Containers:**
-   Use Docker Compose to build and start the application and database:
+2. **Configure Environment Variables:**
+   Copy the example environment file and adjust it if necessary:
    ```powershell
+   cp .env.example .env
+   ```
+   *Note: For the default Docker setup, the values in `.env.example` (once filled) or the defaults in `config.js` will be used. Make sure `SESSION_SECRET` is set to a secure random string.*
+
+   Add the variable the content, which was sent to you (teams or seperate file)
+3. **Start the Containers:**
+   Go back to the root directory and use Docker Compose to build and start the application and database:
+   ```powershell
+   cd ..
    docker compose -f docker/compose.node.yaml up -d
    ```
 
-3. **Access the App:**
+4. **Access the App:**
    Open your browser and go to `http://localhost`. 
    *Note: Ensure port 80 is not already in use by another application.*
 
@@ -36,7 +44,8 @@ Die Applikation steht als PHP- oder NodeJS-Applikation zur Verfügung. Abhängig
 * PHP: `docker compose -f docker/compose.php.yaml up`
 * NodeJS: `docker compose -f docker/compose.node.yaml up`
 
-Bei NodeJS müssen vor dem Start der Container noch mit `npm install` die Abhängigkeiten installiert werden (wichtig: der Befehl muss innerhalb vom `todo-list-node`-Verzeichnis ausgeführt werden).
+Bei NodeJS müssen vor dem Start der Container noch mit `npm install` die Abhängigkeiten installiert werden (wichtig: der Befehl muss innerhalb vom `todo-list-node`-Verzeichnis ausgeführt werden) und die `.env`-Datei erstellt werden:
+* `cp .env.example .env` (innerhalb vom `todo-list-node`-Verzeichnis)
 
 Der include-Befehl in den YAML-Files steht erst ab der Docker Compose Version 2.20.3 zur Verfügung. Sollte der Rechner einen Fehler bezüglich include werfen, aktualisieren Sie Docker Compose oder kopieren Sie die Containerdefinition von `compose.db.yaml` in die jeweilige YAML-Datei.
 
