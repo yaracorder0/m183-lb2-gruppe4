@@ -2,6 +2,7 @@ const db = require('./fw/db');
 const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const escapeHtml = require('escape-html');
+const logger = require('./fw/logger');
 
 
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
@@ -93,8 +94,23 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
             user.roleid = result.roleId;
             msg = escapeHtml(result.msg);
 
+            logger.info({
+                event: 'login_success',
+                username: username,
+                ip: req.ip,
+                userId: user.userid,
+                timestamp: new Date().toISOString()
+            });
+
             await resetFailedAttempts(username, req.ip);
         } else {
+            logger.warn({
+                event: 'login_failure',
+                username: username,
+                ip: req.ip,
+                reason: result.msg,
+                timestamp: new Date().toISOString()
+            });
             await incrementFailedAttempts(username, req.ip);
             const nowFailedAttempts = await getFailedAttempts(username, req.ip);
             const nowShowCaptcha = nowFailedAttempts >= MAX_FAILED_ATTEMPTS;

@@ -84,6 +84,24 @@ app.use((err, req, res, next) => {
     res.send('Form tampered with or session expired (CSRF Error)');
 });
 
+const searchLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 10, // limit each IP to 10 requests per windowMs
+    message: "Too many search requests from this IP, please try again after a minute"
+});
+
+const signupLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: 'Too many signup attempts from this IP, please try again later.'
+});
+
+const resetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: 'Too many password reset attempts from this IP, please try again later.'
+});
+
 // Routen
 app.get('/', async (req, res) => {
     if (activeUserSession(req)) {
@@ -98,7 +116,7 @@ app.get('/', async (req, res) => {
 // edit task
 app.get('/admin/users', async (req, res) => {
     if (activeUserSession(req) && req.session.roleid === 1) {
-        let html = await wrapContent(await adminUser.html(), req);
+        let html = await wrapContent(await adminUser.html(req), req);
         res.send(html);
     } else {
         res.redirect('/');
@@ -225,24 +243,6 @@ app.post('/savetask', async (req, res) => {
     } else {
         res.redirect('/');
     }
-});
-
-const searchLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 10, // limit each IP to 10 requests per windowMs
-    message: "Too many search requests from this IP, please try again after a minute"
-});
-
-const signupLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10,
-    message: 'Too many signup attempts from this IP, please try again later.'
-});
-
-const resetLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10,
-    message: 'Too many password reset attempts from this IP, please try again later.'
 });
 
 // search
