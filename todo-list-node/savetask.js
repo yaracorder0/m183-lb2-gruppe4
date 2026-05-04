@@ -4,15 +4,9 @@ async function getHtml(req) {
     let html = '';
     let taskId = '';
 
-    // see if the id exists in the database and belongs to the user
-    if (req.body.id !== undefined && req.body.id.length !== 0) {
+    // If an ID is provided, verify it belongs to the user before updating
+    if (req.body.id !== undefined && req.body.id.trim() !== '') {
         taskId = req.body.id;
-        let stmt = await db.executeStatement('SELECT ID FROM tasks WHERE ID = ? AND userID = ?', [taskId, req.session.userid]);
-        if (stmt.length === 0) {
-            taskId = '';
-            // If the task existed but didn't belong to the user, we should probably throw an error, 
-            // but for now, we just treat it as a new task creation or ignore it to prevent IDOR.
-        }
     }
 
     if (req.body.title !== undefined && req.body.state !== undefined){
@@ -23,7 +17,15 @@ async function getHtml(req) {
         if (taskId === ''){
             await db.executeStatement("INSERT INTO tasks (title, state, userID) VALUES (?, ?, ?)", [title, state, userid]);
         } else {
-            await db.executeStatement("UPDATE tasks SET title = ?, state = ? WHERE ID = ? AND userID = ?", [title, state, taskId, userid]);
+            // To properly fix TOCTOU and ownership in one go:
+            // We use a single UPDATE that checks userID, which is already atomic in MySQL for a single row.
+            // Using UPDATE with both ID and userID in the WHERE clause ensures that the update
+            // only happens if the task exists and belongs to the authenticated user.
+            let result = await db.executeStatement("UPDATE tasks SET title = ?, state = ? WHERE ID = ? AND userID = ?", [title, state, taskId, userid]);
+            if (result.affectedRows === 0) {
+                html += "<span class='info info-error'>Update failed: Task not found or access denied</span>";
+                return html;
+            }
         }
 
         html += "<span class='info info-success'>Update successful</span>";

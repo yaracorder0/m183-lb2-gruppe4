@@ -96,14 +96,6 @@ app.get('/', async (req, res) => {
     }
 });
 
-app.post('/', async (req, res) => {
-    if (activeUserSession(req)) {
-        let html = await wrapContent(await index.html(req), req)
-        res.send(html);
-    } else {
-        res.redirect('login');
-    }
-})
 
 // edit task
 app.get('/admin/users', async (req, res) => {
