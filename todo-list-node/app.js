@@ -97,7 +97,7 @@ app.get('/', async (req, res) => {
 
 // edit task
 app.get('/admin/users', async (req, res) => {
-    if(activeUserSession(req) && req.session.roleid === 1) {
+    if (activeUserSession(req) && req.session.roleid === 1) {
         let html = await wrapContent(await adminUser.html(), req);
         res.send(html);
     } else {
@@ -129,7 +129,7 @@ app.post('/delete', async (req, res) => {
 app.get('/login', async (req, res) => {
     let content = await login.handleLogin(req, res);
 
-    if(content.user.userid !== 0) {
+    if (content.user.userid !== 0) {
         // login was successful... set session and redirect to /
         login.startUserSession(req, res, content.user);
     } else {
@@ -142,7 +142,7 @@ app.get('/login', async (req, res) => {
 app.post('/login', async (req, res) => {
     let content = await login.handleLogin(req, res);
 
-    if(content.user.userid !== 0) {
+    if (content.user.userid !== 0) {
         // login was successful... set session and redirect to /
         login.startUserSession(req, res, content.user);
     } else {
@@ -152,13 +152,13 @@ app.post('/login', async (req, res) => {
     }
 });
 
-app.get('/signup', async (req, res) => {
+app.get('/signup', signupLimiter, async (req, res) => {
     let content = await signup.handleSignup(req, res);
     let html = await wrapContent(content.html, req);
     res.send(html);
 })
 
-app.post('/signup', async (req, res) => {
+app.post('/signup', signupLimiter, async (req, res) => {
     let content = await signup.handleSignup(req, res);
 
     if (content.user.userid !== 0) {
@@ -170,7 +170,7 @@ app.post('/signup', async (req, res) => {
     }
 })
 
-app.get('/forgot-password', async (req, res) => {
+app.get('/forgot-password', resetLimiter, async (req, res) => {
     let content = await passwordReset.handleForgotPassword(req, res);
     if (content) {
         let html = await wrapContent(content.html, req);
@@ -178,7 +178,7 @@ app.get('/forgot-password', async (req, res) => {
     }
 })
 
-app.post('/forgot-password', async (req, res) => {
+app.post('/forgot-password', resetLimiter, async (req, res) => {
     let content = await passwordReset.handleForgotPassword(req, res);
     if (content) {
         let html = await wrapContent(content.html, req);
@@ -194,7 +194,7 @@ app.get('/reset-password', async (req, res) => {
     }
 })
 
-app.post('/reset-password', async (req, res) => {
+app.post('/reset-password', resetLimiter, async (req, res) => {
     let content = await passwordReset.handleResetPassword(req, res);
     if (content) {
         let html = await wrapContent(content.html, req);
@@ -233,6 +233,18 @@ const searchLimiter = rateLimit({
     message: "Too many search requests from this IP, please try again after a minute"
 });
 
+const signupLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: 'Too many signup attempts from this IP, please try again later.'
+});
+
+const resetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: 'Too many password reset attempts from this IP, please try again later.'
+});
+
 // search
 app.post('/search', searchLimiter, async (req, res) => {
     if (activeUserSession(req)) {
@@ -261,7 +273,7 @@ app.listen(PORT, () => {
 
 async function wrapContent(content, req) {
     let headerHtml = await header(req);
-    return headerHtml+content+footer;
+    return headerHtml + content + footer;
 }
 
 function activeUserSession(req) {
