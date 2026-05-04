@@ -20,6 +20,7 @@ const search = require('./search');
 const searchProvider = require('./search/v2/index');
 const seed = require('./seed');
 const escapeHtml = require('escape-html');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = 3000;
@@ -221,8 +222,14 @@ app.post('/savetask', async (req, res) => {
     }
 });
 
+const searchLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 10, // limit each IP to 10 requests per windowMs
+    message: "Too many search requests from this IP, please try again after a minute"
+});
+
 // search
-app.post('/search', async (req, res) => {
+app.post('/search', searchLimiter, async (req, res) => {
     if (activeUserSession(req)) {
         let html = await search.html(req);
         res.send(html);
@@ -232,7 +239,7 @@ app.post('/search', async (req, res) => {
 });
 
 // search provider
-app.get('/search/v2/', async (req, res) => {
+app.get('/search/v2/', searchLimiter, async (req, res) => {
     if (activeUserSession(req)) {
         let result = await searchProvider.search(req);
         res.send(result);

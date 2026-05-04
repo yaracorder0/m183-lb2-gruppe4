@@ -17,8 +17,6 @@ async function getHtml(req) {
         return "Invalid search provider";
     }
 
-    await sleep(1000); // this is a long, long search!!
-
     let theUrl='http://localhost:3000'+provider+'?userid='+userid+'&terms='+encodeURIComponent(terms);
     let result = await callAPI('GET', theUrl, false);
     return escapeHtml(result);
@@ -81,12 +79,6 @@ async function callAPI(method, url, data){
     }
 
     return result ? result : noResults;
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
 }
 
 module.exports = { html: getHtml };
