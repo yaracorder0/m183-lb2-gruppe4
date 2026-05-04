@@ -8,6 +8,17 @@ async function seed() {
         const hashedPassword = bcrypt.hashSync(password, 10);
         console.log(`[SEED] Generated hash for ${password}: ${hashedPassword}`);
 
+        // 0. Ensure login_attempts table exists
+        await db.executeStatement(`
+            CREATE TABLE IF NOT EXISTS login_attempts (
+                username VARCHAR(255),
+                ip_address VARCHAR(45),
+                attempts INT DEFAULT 1,
+                last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (username, ip_address)
+            )
+        `);
+
         // 1. Ensure users exist
         await db.executeStatement("INSERT IGNORE INTO users (ID, username, password) VALUES (1, 'admin1', ?)", [hashedPassword]);
         await db.executeStatement("INSERT IGNORE INTO users (ID, username, password) VALUES (2, 'user1', ?)", [hashedPassword]);
