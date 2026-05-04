@@ -4,16 +4,32 @@ const escapeHtml = require('escape-html');
 
 const PASSWORD_REQUIREMENTS = {
   minLength: 8,
+  maxLength: 128,
   requireUppercase: true,
   requireLowercase: true,
-  requireSpecialChar: true,
+  requireSpecial: true,
   requireNumber: true,
 };
 
+function validateUsername(username) {
+  const errors = [];
+  if (!username || typeof username !== 'string')
+    errors.push('Username is required');
+  if (username.length < 3)
+    errors.push('Username must be at least 3 characters');
+  if (username.length > 64)
+    errors.push('Username must be at most 64 characters');
+  if (!/^[A-Za-z0-9._@+-]+$/.test(username))
+    errors.push('Username contains invalid characters');
+  return errors;
+}
+
 function validatePasswordStrength(password) {
-  const errors = []
+  const errors = [];
   if (password.length < PASSWORD_REQUIREMENTS.minLength)
     errors.push(`At least ${PASSWORD_REQUIREMENTS.minLength} characters`);
+  if (password.length > PASSWORD_REQUIREMENTS.maxLength)
+    errors.push(`At most ${PASSWORD_REQUIREMENTS.maxLength} characters`);
   if (PASSWORD_REQUIREMENTS.requireUppercase && !/[A-Z]/.test(password))
     errors.push('At least one uppercase letter');
   if (PASSWORD_REQUIREMENTS.requireLowercase && !/[a-z]/.test(password))
@@ -30,24 +46,31 @@ async function handleSignup(req, res) {
   let success = false;
   let user = { 'username': '', 'userid': 0, 'roleid': 0 };
 
-  if (typeof req.body.username !== 'undefined' &&
-    typeof req.body.password !== 'undefined' &&
-    typeof req.body.confirm_password !== 'undefined') {
-      const { username, password, confirm_password } = req.body;
-      if (password !== confirm_password) {
-        msg = 'Passwords dont match'
+  const { username, password, confirm_password } = req.body ?? {};
+
+  // Ensure all fields are present, non-empty strings
+  if (typeof username !== 'string' || username.trim() === '' ||
+      typeof password !== 'string' || password === '' ||
+      typeof confirm_password !== 'string' || confirm_password === '') {
+    msg = 'All fields are required';
+  } else {
+    const usernameErrors = validateUsername(username.trim());
+    if (usernameErrors.length > 0) {
+      msg = 'Invalid username: ' + usernameErrors.join(', ');
+    } else if (password !== confirm_password) {
+      msg = 'Passwords don\'t match';
+    } else {
+      const passwordErrors = validatePasswordStrength(password);
+      if (passwordErrors.length > 0) {
+        msg = 'Password is too weak: ' + passwordErrors.join(', ');
       } else {
-        const passwordErrors = validatePasswordStrength(password)
-        if (passwordErrors.length > 0) {
-          msg = 'Password is too weak: ' + passwordErrors.join(', ')
-        } else {
-          let result = await registerUser(username, password);
-          msg = result.msg;
-          success = result.valid;
-          if (success) {
-            user.username = username;
-            user.userid = result.userId;
-            user.roleid = result.roleId;
+        let result = await registerUser(username.trim(), password);
+        msg = result.msg;
+        success = result.valid;
+        if (success) {
+          user.username = username.trim();
+          user.userid = result.userId;
+          user.roleid = result.roleId;
         }
       }
     }
@@ -75,7 +98,7 @@ async function registerUser(username, password) {
     const [existing] = await dbConnection.query(checkSql, [username]);
 
     if (existing.length > 0) {
-      result.msg = 'Username already exists'
+      result.msg = 'Username already exists';
     } else {
       const hashedPassword = bcrypt.hashSync(password, 10);
       const insertSql = "INSERT INTO users (username, password) VALUES (?, ?)";
@@ -91,7 +114,7 @@ async function registerUser(username, password) {
     }
   } catch (err) {
     console.log(err);
-    result.msg = "Error occurred!"
+    result.msg = "Error occurred!";
   } finally {
     if (dbConnection) {
       await dbConnection.end();
