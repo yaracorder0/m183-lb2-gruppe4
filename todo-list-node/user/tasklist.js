@@ -23,7 +23,12 @@ async function getHtml(req) {
                 <td class="wide">`+escapeHtml(row.title)+`</td>
                 <td>`+escapeHtml(ucfirst(row.state))+`</td>
                 <td>
-                    <a href="edit?id=`+escapeHtml(String(row.ID))+`">edit</a> | <a href="delete?id=`+escapeHtml(String(row.ID))+`">delete</a>
+                    <a href="edit?id=`+escapeHtml(String(row.ID))+`">edit</a> | 
+                    <form action="delete" method="POST" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="`+req.csrfToken()+`">
+                        <input type="hidden" name="id" value="`+escapeHtml(String(row.ID))+`">
+                        <button type="submit" style="background:none; border:none; color:blue; text-decoration:underline; cursor:pointer; padding:0; font-family:inherit; font-size:inherit;">delete</button>
+                    </form>
                 </td>
             </tr>`;
     });

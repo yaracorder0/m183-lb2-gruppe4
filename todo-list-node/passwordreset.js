@@ -23,7 +23,7 @@ async function handleForgotPassword(req, res) {
         }
     }
 
-    return { 'html': msg + getForgotPasswordHtml(), 'success': success };
+    return { 'html': msg + getForgotPasswordHtml(req), 'success': success };
 }
 
 async function handleResetPassword(req, res) {
@@ -55,7 +55,7 @@ async function handleResetPassword(req, res) {
         }
     }
 
-    return { 'html': msg + getResetPasswordHtml(username, token), 'success': success };
+    return { 'html': msg + getResetPasswordHtml(req, username, token), 'success': success };
 }
 
 async function verifyUser(username) {
@@ -94,11 +94,12 @@ async function updatePassword(username, password) {
     return result;
 }
 
-function getForgotPasswordHtml() {
+function getForgotPasswordHtml(req) {
     return `
     <h2>Forgot Password</h2>
     <p>Please enter your username to reset your password.</p>
     <form method="post" action="/forgot-password">
+        <input type="hidden" name="_csrf" value="${req.csrfToken()}">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" class="form-control size-medium" name="username" id="username" required>
@@ -110,12 +111,13 @@ function getForgotPasswordHtml() {
     </form>`;
 }
 
-function getResetPasswordHtml(username, token) {
+function getResetPasswordHtml(req, username, token) {
     const escapeHtml = require('escape-html');
     return `
     <h2>Set New Password</h2>
     <p>Setting new password for user: <strong>${escapeHtml(username)}</strong></p>
     <form method="post" action="/reset-password">
+        <input type="hidden" name="_csrf" value="${req.csrfToken()}">
         <input type="hidden" name="token" value="${escapeHtml(token)}">
         <div class="form-group">
             <label for="password">New Password</label>

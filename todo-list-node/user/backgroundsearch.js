@@ -3,6 +3,7 @@ function getHtml(req) {
 <section id="search">
     <h2>Search</h2>
     <form id="form" method="post" action="">
+        <input type="hidden" name="_csrf" id="csrfToken" value="`+req.csrfToken()+`" />
         <input type="hidden" id="searchurl" name="searchurl" value="/search/v2/" />
         <div class="form-group">
             <label for="terms">terms</label>
@@ -31,10 +32,11 @@ function getHtml(req) {
             submitHandler: function (form) {
                 provider = $("#searchurl").val();
                 terms = $("#terms").val();
+                csrf = $("#csrfToken").val();
                 userid = 0; // Userid is now handled server-side from session
                 $("#msg").show();
                 $("#result").html("");
-                $.post("search", { provider: provider, terms: terms, userid: userid }, function(data){
+                $.post("search", { _csrf: csrf, provider: provider, terms: terms, userid: userid }, function(data){
                     console.log(data);
                     $("#result").html(data);
                     $("#msg").hide(500);

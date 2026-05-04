@@ -53,7 +53,7 @@ async function handleSignup(req, res) {
     }
   }
 
-  return { 'html': escapeHtml(msg) + getHtml(), 'success': success, 'user': user };
+  return { 'html': (msg ? escapeHtml(msg) : '') + getHtml(req), 'success': success, 'user': user };
 }
 
 function startUserSession(res, user) {

@@ -13,7 +13,7 @@ async function handleLoginPage(req) {
     const showCaptcha = failedAttempts >= MAX_FAILED_ATTEMPTS;
 
     return {
-        html: getHtml('', showCaptcha)
+        html: getHtml(req, '', showCaptcha)
     };
 }
 
@@ -42,7 +42,7 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
 
             if (!captchaToken) {
                 return {
-                    html: getHtml('Please complete the reCAPTCHA.', true),
+                    html: getHtml(req, 'Please complete the reCAPTCHA.', true),
                     user
                 };
             }
@@ -51,7 +51,7 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
 
             if (!captchaValid) {
                 return {
-                    html: getHtml('reCAPTCHA verification failed. Please try again.', true),
+                    html: getHtml(req, 'reCAPTCHA verification failed. Please try again.', true),
                     user
                 };
             }
@@ -72,7 +72,7 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
             const nowShowCaptcha = req.session.failedLoginAttempts >= MAX_FAILED_ATTEMPTS;
             msg = escapeHtml(result.msg);
             return {
-                html: getHtml(msg, nowShowCaptcha),
+                html: getHtml(req, msg, nowShowCaptcha),
                 user
             };
         }
@@ -80,7 +80,7 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
     const updatedFailedAttempts = req.session.failedLoginAttempts || 0;
     const updatedShowCaptcha = updatedFailedAttempts >= MAX_FAILED_ATTEMPTS;
 
-    return { html: getHtml(msg, updatedShowCaptcha), user };
+    return { html: getHtml(req, msg, updatedShowCaptcha), user };
 }
 
 function startUserSession(req, res, user) {
@@ -182,12 +182,13 @@ async function validateLogin(username, password) {
     return result;
 }
 
-function getHtml(msg = '', showCaptcha = false) {
+function getHtml(req, msg = '', showCaptcha = false) {
     return `
     ${msg ? `<div style="margin-bottom: 20px;">${msg}</div>` : ''}
     <h2>Login</h2>
 
     <form id="form" method="post" action="/login">
+        <input type="hidden" name="_csrf" value="${req.csrfToken()}">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" class="form-control size-medium" name="username" id="username">
