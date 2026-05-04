@@ -16,7 +16,7 @@ async function handleForgotPassword(req, res) {
             req.session.resetToken = token;
             req.session.resetUsername = username;
             
-            res.redirect('/reset-password?token=' + token);
+            res.redirect('/reset-password');
             return null; 
         } else {
             msg = '<div class="alert alert-danger">User not found.</div>';
@@ -29,10 +29,12 @@ async function handleForgotPassword(req, res) {
 async function handleResetPassword(req, res) {
     let msg = '';
     let success = false;
-    const token = req.query.token || req.body.token;
+    const sessionToken = req.session.resetToken;
+    const bodyToken = req.body.token;
+    const token = bodyToken || sessionToken;
     const username = req.session.resetUsername;
 
-    if (!token || !username || token !== req.session.resetToken) {
+    if (!token || !username || token !== sessionToken) {
         res.redirect('/forgot-password');
         return null;
     }
