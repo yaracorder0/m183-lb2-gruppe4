@@ -169,7 +169,6 @@ async function validateLogin(username, password) {
                  WHERE username = ?`;
     try {
         const [results, fields] = await dbConnection.execute(sql, [username]);
-        console.log('[DEBUG_LOG] results for user ' + username + ':', results);
 
         if(results.length > 0) {
             // Bind the result variables
@@ -177,23 +176,19 @@ async function validateLogin(username, password) {
             let db_roleId = results[0].roleid;
             let db_password = results[0].password;
 
-            console.log('[DEBUG_LOG] comparing passwords...');
             // Verify the password with bcrypt
             if (bcrypt.compareSync(password, db_password)) {
-                console.log('[DEBUG_LOG] password match');
                 result.userId = db_id;
                 result.roleId = db_roleId;
                 result.valid = true;
                 result.msg = 'login correct';
             } else {
-                console.log('[DEBUG_LOG] password mismatch');
                 // Password is incorrect
-                result.msg = 'Incorrect email or password';
+                result.msg = 'Invalid username or password';
             }
         } else {
-            console.log('[DEBUG_LOG] user not found');
             // Username does not exist
-            result.msg = 'Username does not exist';
+            result.msg = 'Invalid username or password';
         }
 
         console.log(results); // results contains rows returned by server
