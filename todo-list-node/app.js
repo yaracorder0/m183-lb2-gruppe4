@@ -51,6 +51,8 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(cookieParser());
 
 // Routen
@@ -93,7 +95,7 @@ app.get('/edit', async (req, res) => {
 });
 
 // delete task
-app.get('/delete', async (req, res) => {
+app.post('/delete', async (req, res) => {
     if (activeUserSession(req)) {
         let html = await wrapContent(await deleteTask.html(req), req);
         res.send(html);

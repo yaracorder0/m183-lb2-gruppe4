@@ -1,7 +1,7 @@
 const db = require('./fw/db');
 
 async function getHtml(req) {
-    let taskId = req.query.id;
+    let taskId = req.body.id;
     let userid = req.session.userid;
 
     if (taskId) {
