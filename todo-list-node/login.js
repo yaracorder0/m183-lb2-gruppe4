@@ -8,8 +8,35 @@ const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY;
 const MAX_FAILED_ATTEMPTS = 3;
 
+async function getFailedAttempts(username, ip) {
+    if (!username) return 0;
+    const sql = 'SELECT attempts FROM login_attempts WHERE username = ? OR ip_address = ?';
+    const results = await db.executeStatement(sql, [username, ip]);
+    if (results.length > 0) {
+        // Return the maximum attempts found for either username or IP
+        return Math.max(...results.map(r => r.attempts));
+    }
+    return 0;
+}
+
+async function incrementFailedAttempts(username, ip) {
+    if (!username) return;
+    const sql = `
+        INSERT INTO login_attempts (username, ip_address, attempts) 
+        VALUES (?, ?, 1) 
+        ON DUPLICATE KEY UPDATE attempts = attempts + 1
+    `;
+    await db.executeStatement(sql, [username, ip]);
+}
+
+async function resetFailedAttempts(username, ip) {
+    if (!username) return;
+    const sql = 'DELETE FROM login_attempts WHERE username = ? OR ip_address = ?';
+    await db.executeStatement(sql, [username, ip]);
+}
+
 async function handleLoginPage(req) {
-    const failedAttempts = req.session.failedLoginAttempts || 0;
+    const failedAttempts = await getFailedAttempts(req.query.username || req.body.username, req.ip);
     const showCaptcha = failedAttempts >= MAX_FAILED_ATTEMPTS;
 
     return {
@@ -32,7 +59,7 @@ async function handleLogin(req, res) {
     const username = req.body.username;
     const password = req.body.password;
 
-    const failedAttempts = req.session.failedLoginAttempts || 0;
+    const failedAttempts = await getFailedAttempts(username, req.ip);
     const showCaptcha = failedAttempts >= MAX_FAILED_ATTEMPTS;
 
 if (typeof username !== 'undefined' && typeof password !== 'undefined') {
@@ -66,10 +93,11 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
             user.roleid = result.roleId;
             msg = escapeHtml(result.msg);
 
-            req.session.failedLoginAttempts = 0;
+            await resetFailedAttempts(username, req.ip);
         } else {
-            req.session.failedLoginAttempts = failedAttempts + 1;
-            const nowShowCaptcha = req.session.failedLoginAttempts >= MAX_FAILED_ATTEMPTS;
+            await incrementFailedAttempts(username, req.ip);
+            const nowFailedAttempts = await getFailedAttempts(username, req.ip);
+            const nowShowCaptcha = nowFailedAttempts >= MAX_FAILED_ATTEMPTS;
             msg = escapeHtml(result.msg);
             return {
                 html: getHtml(req, msg, nowShowCaptcha),
@@ -77,7 +105,7 @@ if (typeof username !== 'undefined' && typeof password !== 'undefined') {
             };
         }
     }
-    const updatedFailedAttempts = req.session.failedLoginAttempts || 0;
+    const updatedFailedAttempts = await getFailedAttempts(username, req.ip);
     const updatedShowCaptcha = updatedFailedAttempts >= MAX_FAILED_ATTEMPTS;
 
     return { html: getHtml(req, msg, updatedShowCaptcha), user };
@@ -96,7 +124,6 @@ function startUserSession(req, res, user) {
         req.session.username = user.username;
         req.session.userid = user.userid;
         req.session.roleid = user.roleid;
-        req.session.failedLoginAttempts = 0;
 
         res.cookie('username', user.username, { httpOnly: true });
         res.cookie('userid', user.userid, { httpOnly: true });
@@ -161,7 +188,7 @@ async function validateLogin(username, password) {
             } else {
                 console.log('[DEBUG_LOG] password mismatch');
                 // Password is incorrect
-                result.msg = 'Incorrect password';
+                result.msg = 'Incorrect email or password';
             }
         } else {
             console.log('[DEBUG_LOG] user not found');
