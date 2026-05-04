@@ -21,13 +21,17 @@ Follow these steps to get the project up and running on your local machine.
    ```
 
 2. **Configure Environment Variables:**
-   Copy the example environment file and adjust it if necessary:
-   ```powershell
-   cp .env.example .env
+   Create a `.env` file in the `todo-list-node` directory with the following content:
+   ```env
+   RECAPTCHA_SITE_KEY=6Lc3v5MsAAAAAMGuKeiW1pNTDSR5czy0ODF6pXu2
+   RECAPTCHA_SECRET_KEY=6Lc3v5MsAAAAAG_iOnaAfi9lv7QeU9_pFzbcWR4s
+   SESSION_SECRET=a-very-secure-random-secret-key-9876543210
+   DB_HOST=m183-lb2-db
+   DB_USER=root
+   DB_PASSWORD=Some.Real.Secr3t
+   DB_NAME=m183_lb2
    ```
-   *Note: For the default Docker setup, the values in `.env.example` (once filled) or the defaults in `config.js` will be used. Make sure `SESSION_SECRET` is set to a secure random string.*
-
-   Add the variable the content, which was sent to you (teams or seperate file)
+   *Note: Make sure `SESSION_SECRET` is set to a secure random string.*
 3. **Start the Containers:**
    Go back to the root directory and use Docker Compose to build and start the application and database:
    ```powershell

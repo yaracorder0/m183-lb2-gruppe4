@@ -1,5 +1,20 @@
 require('dotenv').config();
 
+const requiredEnv = [
+    'DB_HOST',
+    'DB_USER',
+    'DB_PASSWORD',
+    'DB_NAME',
+    'SESSION_SECRET'
+];
+
+const missingEnv = requiredEnv.filter(env => !process.env[env]);
+
+if (missingEnv.length > 0) {
+    console.error('FATAL ERROR: Missing required environment variables:', missingEnv.join(', '));
+    process.exit(1);
+}
+
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -30,7 +45,7 @@ seed();
 
 // Middleware für Session-Handling
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'fallback-secret-12345',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
