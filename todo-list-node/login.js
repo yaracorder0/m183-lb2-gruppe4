@@ -161,7 +161,7 @@ async function validateLogin(username, password) {
             } else {
                 console.log('[DEBUG_LOG] password mismatch');
                 // Password is incorrect
-                result.msg = 'Incorrect password';
+                result.msg = 'Incorrect email or password';
             }
         } else {
             console.log('[DEBUG_LOG] user not found');
