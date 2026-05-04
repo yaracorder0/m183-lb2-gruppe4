@@ -32,7 +32,14 @@ Follow these steps to get the project up and running on your local machine.
    DB_NAME=m183_lb2
    ```
    *Note: Make sure `SESSION_SECRET` is set to a secure random string.*
-3. **Start the Containers:**
+
+3. **Default Credentials:**
+   The following users are available for testing:
+   - **Admin:** `admin1`
+   - **User:** `user1`
+   - **Password:** `Awesome.Pass34`
+
+4. **Start the Containers:**
    Go back to the root directory and use Docker Compose to build and start the application and database:
    ```powershell
    cd ..

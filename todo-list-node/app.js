@@ -17,7 +17,6 @@ if (missingEnv.length > 0) {
 
 const express = require('express');
 const session = require('express-session');
-const cookieParser = require('cookie-parser');
 const path = require('path');
 const csurf = require('csurf');
 const crypto = require('crypto');
@@ -58,15 +57,14 @@ app.use(session({
 // Middleware für Body-Parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cookieParser());
-app.use(csurf({ cookie: true }));
+app.use(csurf({ cookie: false }));
 
 app.use((req, res, next) => {
     res.locals.csrfToken = req.csrfToken ? req.csrfToken() : null;
     next();
 });
 
-// Basic Security Headers
+// basic Security Headers
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
