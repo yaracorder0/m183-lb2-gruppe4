@@ -124,9 +124,6 @@ function startUserSession(req, res, user) {
         req.session.username = user.username;
         req.session.userid = user.userid;
         req.session.roleid = user.roleid;
-
-        res.cookie('username', user.username, { httpOnly: true });
-        res.cookie('userid', user.userid, { httpOnly: true });
         res.redirect('/');
     });
 }
