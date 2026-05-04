@@ -4,6 +4,8 @@ const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const csurf = require('csurf');
+const crypto = require('crypto');
 const header = require('./fw/header');
 const footer = require('./fw/footer');
 const login = require('./login');
@@ -40,6 +42,13 @@ app.use(session({
 // Middleware für Body-Parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
+app.use(csurf({ cookie: true }));
+
+app.use((req, res, next) => {
+    res.locals.csrfToken = req.csrfToken ? req.csrfToken() : null;
+    next();
+});
 
 // Basic Security Headers
 app.use((req, res, next) => {
@@ -51,9 +60,15 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(cookieParser());
+
+// Error-Handler for CSRF
+app.use((err, req, res, next) => {
+    if (err.code !== 'EBADCSRFTOKEN') return next(err);
+
+    // handle CSRF token errors here
+    res.status(403);
+    res.send('Form tampered with or session expired (CSRF Error)');
+});
 
 // Routen
 app.get('/', async (req, res) => {

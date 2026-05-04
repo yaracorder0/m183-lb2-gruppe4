@@ -25,7 +25,7 @@ async function handleSignup(req, res) {
       }
     }
 
-  return { 'html': escapeHtml(msg) + getHtml(), 'success': success, 'user': user };
+  return { 'html': (msg ? escapeHtml(msg) : '') + getHtml(req), 'success': success, 'user': user };
 }
 
 function startUserSession(res, user) {
@@ -73,10 +73,11 @@ async function registerUser(username, password) {
   return result;
 }
 
-function getHtml() {
+function getHtml(req) {
     return `
     <h2>Sign Up</h2>
     <form id="signup-form" method="post" action="/signup">
+        <input type="hidden" name="_csrf" value="${req.csrfToken()}">
         <div class="form-group">
             <label for="username">Username / Email</label>
             <input type="text" class="form-control size-medium" name="username" id="username" required>

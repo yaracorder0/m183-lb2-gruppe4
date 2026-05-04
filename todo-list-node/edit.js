@@ -23,6 +23,7 @@ async function getHtml(req) {
 
     html += `
     <form id="form" method="post" action="savetask">
+        <input type="hidden" name="_csrf" value="`+req.csrfToken()+`" />
         <input type="hidden" name="id" value="`+escapeHtml(String(taskId))+`" />
         <div class="form-group">
             <label for="title">Description</label>
