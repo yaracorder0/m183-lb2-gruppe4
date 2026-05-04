@@ -204,7 +204,7 @@ app.get('/logout', (req, res) => {
 
 // Profilseite anzeigen
 app.get('/profile', (req, res) => {
-    if (req.session.loggedin) {
+    if (activeUserSession(req)) {
         res.send(`Welcome, ${escapeHtml(req.session.username)}! <a href="/logout">Logout</a>`);
     } else {
         res.send('Please login to view this page');
@@ -223,8 +223,12 @@ app.post('/savetask', async (req, res) => {
 
 // search
 app.post('/search', async (req, res) => {
-    let html = await search.html(req);
-    res.send(html);
+    if (activeUserSession(req)) {
+        let html = await search.html(req);
+        res.send(html);
+    } else {
+        res.redirect('/');
+    }
 });
 
 // search provider
